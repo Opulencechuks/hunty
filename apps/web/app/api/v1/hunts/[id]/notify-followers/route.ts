@@ -9,10 +9,9 @@ import { NextResponse, NextRequest } from "next/server";
 
 import { ValidationError, AuthError, ForbiddenError } from "@/lib/api/errors";
 import { withErrorHandling } from "@/lib/api/withErrorHandling";
-import { rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 import { getPublicHuntByIdOptimized } from "@/lib/db/queryOptimizer";
 import { notifyFollowersOfNewHunt } from "@/lib/follows";
-import { verifyCallerAuth } from "@/lib/walletAuth";
+import { getIP, rateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 type Context = { params: Promise<{ id: string }> };
 
@@ -42,11 +41,7 @@ export const POST = withErrorHandling<Context, NextRequest>(async (req: NextRequ
     return NextResponse.json({ notified: 0, reason: "no_creator" });
   }
 
-  if (actor !== creator && actor !== "session_authenticated_admin" && !actor?.startsWith("sess_")) {
-    throw new ForbiddenError("Only the hunt creator can trigger notifications");
-  }
-
-  const notifications = notifyFollowersOfNewHunt(creator, { id: hunt.id, title: hunt.title });
+  const notifications = await notifyFollowersOfNewHunt(creator, { id: hunt.id, title: hunt.title });
 
   return NextResponse.json({ notified: notifications.length });
 });

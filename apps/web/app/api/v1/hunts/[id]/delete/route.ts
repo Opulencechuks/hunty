@@ -1,13 +1,12 @@
-import { NextResponse, NextRequest } from "next/server";
-import { rateLimit, getIP, rateLimitResponse } from "@/lib/rate-limit";
-import { logger } from "@/lib/logger";
+import { huntDeleteBodySchema } from "@hunty/types/api-schemas";
+import { NextResponse } from "next/server";
+import { z } from "zod";
+
 import { ValidationError } from "@/lib/api/errors";
 import { withValidation } from "@/lib/api/withValidation";
 import { recordHuntAudit } from "@/lib/db/huntAuditLog";
-import { huntDeleteBodySchema } from "@hunty/types/api-schemas";
-import { z } from "zod";
-import { verifyCallerAuth } from "@/lib/walletAuth";
-import { getHuntById } from "@/lib/huntStore";
+import { logger } from "@/lib/logger";
+import { getIP, rateLimit, rateLimitPresets, rateLimitResponse } from "@/lib/rate-limit";
 
 const paramsSchema = z.object({ id: z.string() })
 
@@ -19,7 +18,7 @@ export const POST = withValidation(
   { body: huntDeleteBodySchema, params: paramsSchema },
   async (req, _context, { body, params }) => {
     const ip = getIP(req);
-    const { success, reset } = await rateLimit(ip, { limit: 30, windowMs: 60 * 1000 });
+    const { success, reset } = await rateLimit(ip, rateLimitPresets.write);
     if (!success) return rateLimitResponse(reset);
 
     const huntId = parseInt(params!.id, 10);
